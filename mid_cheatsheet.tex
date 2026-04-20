@@ -6,6 +6,7 @@
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{parskip}
+\usepackage{tcolorbox}
 
 \setlength{\columnsep}{0.2in}
 \setlength{\parindent}{0pt}
@@ -17,237 +18,262 @@
 \titlespacing*{\section}{0pt}{2pt}{1pt}
 \titlespacing*{\subsection}{0pt}{1pt}{0pt}
 
+\newcommand{\trap}[1]{{\small\colorbox{yellow!30}{\parbox{0.93\linewidth}{\textbf{\textcolor{red!70!black}{Trap:}} #1}}}}
+
 \pagestyle{empty}
 
 \begin{document}
 \begin{multicols*}{3}
+\raggedright
 
     \section*{1. NLP Basics \& Challenges}
-    \textbf{Goal:} Enable computers to understand/process human language.
+    \textbf{Goal:} interdisciplinary field (CS + AI + ling.); enable computers to understand human instructions and perform tasks. LLM paradigm shift: \emph{one big model} replaces task-specific models.
 
-    \subsection*{Types of Ambiguity}
+    \subsection*{Types of Ambiguity (map example$\to$type)}
     \begin{itemize}
-        \item \textbf{Word Sense:} one word, many meanings. ``I saw her \emph{duck}'' (animal vs. verb).
-        \item \textbf{PP Attachment:} which part modifier attaches to. ``I saw her duck \emph{with a telescope}'' (telescope with me or her?).
-        \item \textbf{Headline/Syntactic:} compressed phrasing. ``San Jose cops kill man with knife'' (who has knife?).
-        \item \textbf{Pronoun/Coref:} unclear pronoun referent. ``The umbrella can't fit in the bin because \emph{it} is too big/small'' (it = umbrella or bin?).
+        \item \textbf{Word Sense:} one word, many meanings. ``I saw her \emph{duck}'' (animal / verb).
+        \item \textbf{PP Attachment:} modifier attachment. ``I saw her duck \emph{with a telescope}'' (who has telescope).
+        \item \textbf{Headline/Syntactic:} compressed phrasing. ``San Jose cops kill man with knife''; ``Local High School Dropouts Cut in Half''; ``Include your children when baking cookies''.
+        \item \textbf{Pronoun Ref:} unclear referent. ``Umbrella can't fit in bin because \emph{it} is too big/small''; ``doctor brings dog to patients, \emph{he} loves sloppy kisses''.
     \end{itemize}
 
     \subsection*{Modern Challenges}
     \begin{itemize}
-        \item \textbf{Scalability:} 1M words (Penn Treebank) $\to$ billions (Web). Need massive corpora.
-        \item \textbf{Dynamic Language:} cyber lingo, slang evolve (LOL, G2G).
-        \item \textbf{Hallucination:} LLMs fabricate facts, fail basic reasoning (e.g., count 20 baseballs as 24).
+        \item \textbf{Scalability:} Penn Treebank $\approx$1M $\to$ Wikipedia $\approx$2.9B $\to$ Web (billions).
+        \item \textbf{Dynamic Language:} slang evolves (LOL, G2G, BFN, FWIW).
+        \item \textbf{Hallucination:} plausible but false (fake bios, miscount baseballs 20$\to$24).
     \end{itemize}
+
+    \subsection*{Tasks (map problem$\to$task)}
+    MT, Sentiment, Info Extraction (unstructured$\to$DB), QA (Watson/Siri), Math solvers (AlphaGeometry), agents, embodied robots.
 
     \section*{2. Coreference \& Evaluation}
-    \textbf{Coref Resolution:} group mentions (pronouns, common nouns, NEs) referring to same entity. Not all nouns/pronouns are mentions (``\emph{It} is raining'' $\to$ no referent).
+    \textbf{Coref:} group mentions (pronouns, common nouns, NEs) referring to same entity.
 
-    \subsection*{MUC (Link-based)}
-    Computes P/R on mention \textbf{pairs/links}.
-    \[P=\tfrac{TP\ pairs}{\text{predicted pairs}},\ R=\tfrac{TP\ pairs}{\text{gold pairs}}\]
-    \textbf{Flaw:} putting ALL mentions in 1 cluster $\Rightarrow R=1$ artificially.
-
-    \subsection*{B-CUBED (Mention-based)}
-    Computes P/R per \emph{individual mention}, then averages. Fixes MUC giant-cluster flaw.
-
-    \subsection*{F1 Aggregation}
-    \[F1=\frac{2PR}{P+R}\]
+    \subsection*{Mention Edge Cases}
     \begin{itemize}
-        \item \textbf{Macro F1:} compute F1 per doc, then average.
-        \item \textbf{Micro F1:} pool all TP/FP/FN across docs first, then single global F1.
+        \item \emph{Not all pronouns are mentions}: ``\textbf{It} is raining'' $\to$ pleonastic, no referent.
+        \item \emph{Nested}: ``[[my] values]''. \emph{Boundary}: ``US President Biden'' vs.~``US President Biden, who is in Europe''.
     \end{itemize}
 
-    \section*{3. Word Representations \& PMI}
+    \subsection*{MUC (Link-based)}
+    P/R on mention \textbf{pairs}.
+    \[P=\tfrac{TP\ pairs}{\text{pred pairs}},\ R=\tfrac{TP\ pairs}{\text{gold pairs}}\]
+    \trap{One giant cluster $\Rightarrow R=100\%$ (all gold pairs are inside). Exact-match is the opposite extreme---too harsh.}
 
-    \subsection*{One-Hot Vectors}
-    Dim $=|V|$, sparse, orthogonal. $v_{happy}\cdot v_{sad}=0$ $\Rightarrow$ no similarity notion.
+    \subsection*{B-CUBED (Mention-based)}
+    P/R \emph{per mention}, then average. Fixes MUC giant-cluster loophole.
+
+    \subsection*{F1 Aggregation}
+    \[F1=\tfrac{2PR}{P+R}\]
+    \begin{itemize}
+        \item \textbf{Macro F1:} F1 per doc, then mean.
+        \item \textbf{Micro F1:} pool TP/FP/FN across all docs $\to$ one global F1.
+    \end{itemize}
+
+    \section*{3. Word Reps \& PMI}
+
+    \subsection*{One-Hot (key flaws)}
+    Dim $=|V|$ (Google 1T: $\sim$13M); sparse; OOV$\to$no vector; \textbf{dot product of any two different one-hots $=0$ $\Rightarrow$ cannot capture similarity}. $v_{happy}\cdot v_{sad}=0$.
 
     \subsection*{Taxonomy (WordNet)}
-    Manual hierarchy of synonyms. Flaws: labor-intensive, misses nuance, can't track new words.
+    Manual synonym/hypernym hierarchy. Labor, subjective, misses nuance (``proficient''$\ne$``good'' always), can't track slang (``badass'', ``nifty'').
 
     \subsection*{Distributional Hypothesis}
-    ``A word is characterized by the company it keeps.'' Build co-occurrence matrix $M$; compress via PCA/SVD (low-rank).
+    ``A word is characterized by the company it keeps.'' Build co-occurrence matrix; SVD/PCA $\to$ low-rank $d{\times}k$ compressed reps.
 
-    \subsection*{PMI}
-    \[PMI(x,y)=\log_2\frac{P(x,y)}{P(x)P(y)}\]
-    Positive $\Rightarrow$ co-occur more than independent; Negative $\Rightarrow$ less.
-    \textbf{PPMI:} $\max(PMI,0)$ (drop negatives, often noisy).
+    \subsection*{PMI (expect a word-problem)}
+    \[PMI(x,y)=\log_2\frac{P(x,y)}{P(x)P(y)}\in(-\infty,+\infty)\]
+    \textbf{PPMI} $=\max(PMI,0)$ (negatives often noisy).
 
-    \textbf{Estimate from counts} (window/doc):
-    \[P(x)=\tfrac{\#x}{N},\ P(x,y)=\tfrac{\#(x,y)}{N}\]
+    \textbf{Compute from matrix (step-by-step):}
+    \begin{enumerate}
+        \item $N=$ sum of all cells.
+        \item $P(x)=\tfrac{\text{row sum of }x}{N}$, $P(y)=\tfrac{\text{col sum of }y}{N}$.
+        \item $P(x,y)=\tfrac{\text{cell}(x,y)}{N}$.
+        \item Plug into formula. Use $\log_2$ (not ln!).
+    \end{enumerate}
 
-    \section*{4. Word Embeddings (Word2Vec)}
-
-    \subsection*{Skip-Gram}
-    Given center word, predict context (outside) words in window.
+    \section*{4. Word2Vec (Skip-Gram)}
+    Given center word, predict context words in a window.
     \[P(o|c)=\frac{\exp(u_o^\top v_c)}{\sum_{w\in V}\exp(u_w^\top v_c)}\]
     Loss: $J=-\sum_t\sum_{j\neq 0}\log P(w_{t+j}|w_t)$.
 
-    \subsection*{Parameter Count}
-    Each word has 2 vectors: center $v_w$, context $u_w$. Total parameters $=2|V|d$.
+    \subsection*{Parameters (classic Q)}
+    \textbf{Every word has TWO vectors}: center $v_w$ \emph{and} context $u_w$ $\Rightarrow$ total params $=\mathbf{2|V|d}$.
+    \trap{Answering $|V|d$ forgets the context vectors.}
 
-    \subsection*{Gradient / Update}
-    \[\frac{\partial J}{\partial v_c}=u_o-\sum_w P(w|c)u_w\]
-    ``Observed context minus expected context.'' Update subtracts expected weighted sum from true $u_o$.
+    \subsection*{Gradient Intuition}
+    \[\tfrac{\partial J}{\partial v_c}=u_o-\mathbb{E}_{w\sim P(w|c)}[u_w]\]
+    ``Observed outside vector minus expected (probability-weighted) context vector.''
 
-    \subsection*{Properties}
-    \begin{itemize}
-        \item \textbf{Analogies} via vector arithmetic: $v_{king}-v_{man}+v_{woman}\approx v_{queen}$.
-        \item \textbf{Similarity} via cosine: $\cos(a,b)=\frac{a\cdot b}{\|a\|\|b\|}$.
-        \item \textbf{Biases:} embeddings encode societal stereotypes (surgeon$\to$he, nurse$\to$she).
-    \end{itemize}
+    \subsection*{Negative Sampling}
+    Softmax over entire $|V|$ is too expensive $\to$ sample a few random ``negative'' non-context words; cheap approximation used in training.
 
-    \section*{5. Language Models (N-grams)}
+    \subsection*{Similarity \& Analogies}
+    Cosine $=\tfrac{u\cdot v}{\|u\|\|v\|}$. \emph{If vectors are unit-norm, dot product = cosine.} Analogy: $v_{king}-v_{man}+v_{woman}\approx v_{queen}$.
+
+    \subsection*{Polysemy}
+    ``bank'' = river/finance. W2V stores senses as a \textbf{linear superposition} in a single vector; sparse-coding can separate them post-training.
+
+    \subsection*{Bias}
+    Training data biases leak in: $v_{surgeon}-v_{man}+v_{woman}\approx v_{nurse}$.
+
+    \section*{5. N-Gram LMs}
 
     \subsection*{Chain Rule}
-    \[P(w_1...w_T)=\prod_{t=1}^{T}P(w_t|w_1...w_{t-1})\]
+    \[P(w_1..w_T)=\prod_{t=1}^{T}P(w_t|w_{<t})\]
 
-    \subsection*{N-Gram MLE}
-    Bigram: $P(w_i|w_{i-1})=\tfrac{C(w_{i-1},w_i)}{C(w_{i-1})}$. Trigram: condition on 2 prev.
+    \subsection*{Markov / MLE}
+    Bigram (depend on 1 prev), Trigram (2 prev).
+    \[P(w_i|w_{i-1})=\tfrac{C(w_{i-1},w_i)}{C(w_{i-1})}\]
+    Ex: ``I am'' appears 3x, ``I'' 3x $\Rightarrow P(\text{am}|\text{I})=1$.
 
-    \subsection*{Sparsity \& Zipf}
-    Zipf: $r$-th most common word has freq $\propto 1/r$. Unseen n-gram $\Rightarrow$ P=0 kills whole sequence.
-
-    \subsection*{Smoothing}
-    \textbf{Add-One (Laplace):}
-    \[P=\frac{C(w_{i-1}w_i)+1}{C(w_{i-1})+V}\]
-    Must add $V$ (vocab size) in denominator so probs sum to 1.
-
-    \textbf{Add-$\lambda$:}
-    \[P=\frac{C(w_{i-1}w_i)+\lambda}{C(w_{i-1})+\lambda V}\]
-    $\lambda\in(0,1)$ tuned on validation; avoids stealing too much mass from seen n-grams.
-
-    \subsection*{Evaluation}
-    \textbf{Perplexity:} $PP=P(w_1..w_T)^{-1/T}=\exp(-\tfrac{1}{T}\sum\log P(w_t|\cdot))$. Lower $=$ better.
-
-    \section*{6. Neural Language Models}
-
-    \subsection*{Feedforward LM (Fixed Window)}
-    Concatenate last $n-1$ word embeddings; feed to MLP + softmax.
+    \subsection*{Zipf \& Sparsity}
+    $r$-th most common word: freq $\propto 1/r$. Two failure modes:
     \begin{itemize}
-        \item[+] Fixes sparsity (dense reps, generalizes).
-        \item[--] Fixed context size; can't handle variable lengths; no param sharing across positions.
+        \item Numerator 0 $\Rightarrow$ whole sentence prob $=0$.
+        \item Denominator 0 $\Rightarrow$ undefined.
+    \end{itemize}
+
+    \subsection*{Add-One Laplace}
+    \[P=\frac{C(w_{i-1}w_i)+1}{C(w_{i-1})+V}\]
+    \trap{Must add $\mathbf{+V}$ (vocab size) to denominator, NOT $+1$, so probs sum to 1.}
+
+    \subsection*{Add-$\lambda$}
+    \[P=\frac{C+\lambda}{C(w_{i-1})+\lambda V}\]
+    $\lambda$ too large (e.g.,\ 1000) $\Rightarrow$ high bias (over-smooth); too small (0.001) $\Rightarrow$ high variance. Pick on dev set.
+
+    \subsection*{Eval: Perplexity}
+    $PP=P(w_1..w_T)^{-1/T}$. Lower better.
+
+    \section*{6. Neural LMs}
+
+    \subsection*{Feedforward (Fixed Window)} \emph{Quiz 1 favorite.}
+    Concatenate last $n{-}1$ embeddings $\to$ MLP $\to$ softmax.
+    \begin{itemize}
+        \item[+] Dense $\Rightarrow$ no sparsity; captures similarity.
+        \item[--] \textbf{Fixed} window; can't take variable lengths; no cross-position param sharing.
     \end{itemize}
 
     \subsection*{RNN LM}
-    Same $W_h,W_e$ applied at \emph{every} step.
-    \[h_t=\sigma(W_h h_{t-1}+W_e x_t),\ \hat y_t=\text{softmax}(Uh_t)\]
+    Same $W_h,W_e$ at \emph{every} step (\textbf{symmetry / weight sharing}).
+    \[h_t=\sigma(W_h h_{t-1}+W_e x_t+b),\ \hat y_t=\text{softmax}(Uh_t)\]
     \begin{itemize}
-        \item[+] Handles variable lengths; parameter sharing; context grows.
-        \item[--] Sequential (slow); \textbf{vanishing gradient} $\Rightarrow$ forgets far-away words.
+        \item[+] Variable length; shared params; context grows.
+        \item[--] Sequential (slow); \textbf{vanishing gradient} from repeated multiplication by values $\in(-1,1)$ during BPTT $\Rightarrow$ can't learn long-range.
     \end{itemize}
 
-    \subsection*{LSTM}
-    Adds cell state $c_t$ with gates:
-    \begin{itemize}
-        \item \textbf{Forget gate} $f_t$: what to drop from $c_{t-1}$.
-        \item \textbf{Input gate} $i_t$: what new info to add.
-        \item \textbf{Output gate} $o_t$: what to expose as $h_t$.
-    \end{itemize}
+    \subsection*{LSTM Gates}
+    Cell state $c_t$ + gates: \textbf{forget} $f_t$ (drop), \textbf{input} $i_t$ (add), \textbf{output} $o_t$ (expose).
     \[c_t=f_t\odot c_{t-1}+i_t\odot\tilde c_t,\ h_t=o_t\odot\tanh(c_t)\]
-    Gates explicitly control memory $\Rightarrow$ mitigates vanishing gradient.
+    Gates mitigate vanishing gradient.
 
     \section*{7. Seq2Seq \& Decoding}
 
-    \subsection*{Seq2Seq}
-    Encoder RNN reads source $\to$ final hidden $=$ single fixed vector. Decoder RNN generates target conditioned on it.
-    \textbf{Bottleneck:} entire source squeezed into one vector $\Rightarrow$ info loss on long sentences.
+    \subsection*{Seq2Seq Bottleneck}
+    Encoder RNN $\to$ \emph{single} fixed vector $\to$ Decoder. Info loss on long sentences.
 
-    \subsection*{Decoding Algorithms}
-    \textbf{Greedy:} at each step pick $\arg\max P(w_t|\cdot)$. Fast; locally optimal, globally suboptimal.
+    \subsection*{Greedy}
+    $\arg\max$ per step. Fast, no undo, globally suboptimal.
 
-    \textbf{Beam Search:} keep top-$k$ partial hypotheses (beam width $k$) by cumulative log-prob.
+    \subsection*{Beam Search ($k$)}
+    Keep top-$k$ partial hypotheses by cumulative log-prob.
+    \trap{$k=1$ $\Rightarrow$ beam $\equiv$ greedy. Larger $k$: more search, but very large $k$ can hurt fluency.}
+
+    \subsection*{Temperature $T$}
+    Softmax $\text{softmax}(z/T)$.
     \begin{itemize}
-        \item \textbf{If $k=1$, beam search $\equiv$ greedy.}
-        \item Larger $k$: better search, more compute; too large can hurt fluency.
+        \item $T\to\infty$: flatter, more random/diverse.
+        \item $T\to 0$: sharper, becomes \textbf{greedy} (argmax).
     \end{itemize}
 
+    \subsection*{Sampling}
+    \textbf{Top-$k$:} sample from top $k$ tokens. \textbf{Nucleus (Top-$p$):} smallest set with cumulative prob $\geq p$ (e.g., 0.8).
+
     \section*{8. Attention}
-    \textbf{Motivation:} break Seq2Seq bottleneck by letting decoder look at \emph{all} source hidden states.
+    Decoder looks at \emph{every} encoder hidden state each step.
 
-    \subsection*{Mechanism (each decoder step $t$)}
-    1. Score: $e_{t,i}=s_t^\top h_i$ (dot) for each source state $h_i$.
+    \subsection*{Mechanism (step $t$)}
+    1. Score $e_{t,i}=s_t^\top h_i$ (dot) or additive MLP.
 
-    2. Softmax: $\alpha_{t,i}=\tfrac{\exp(e_{t,i})}{\sum_j\exp(e_{t,j})}$.
+    2. $\alpha_{t,i}=\text{softmax}(e_{t,i})$ $\Rightarrow$ \textbf{weights $\in[0,1]$, $\sum_i\alpha_{t,i}=1$}.
 
-    $\Rightarrow$ \textbf{weights $\alpha\in[0,1]$, $\sum_i\alpha_{t,i}=1$.}
-
-    3. Context: $c_t=\sum_i\alpha_{t,i}h_i$.
+    3. Context $c_t=\sum_i\alpha_{t,i}h_i$.
 
     4. Combine with $s_t$, predict $w_t$.
 
-    \subsection*{Benefits}
-    \begin{itemize}
-        \item Solves bottleneck (direct access to all source states).
-        \item Helps with vanishing gradients (shortcut paths).
-        \item \textbf{Interpretable} $\alpha$ learns soft word-alignments.
-    \end{itemize}
+    \subsection*{4 Benefits (``which is NOT true?'')}
+    (i) \textbf{Performance} $\uparrow$; (ii) \textbf{Solves bottleneck}; (iii) \textbf{Helps vanishing gradient} (shortcut path); (iv) \textbf{Interpretability} via soft alignment viz.
 
-    \section*{9. Self-Attention \& Transformers}
-    Removes RNN recurrence $\Rightarrow$ \textbf{parallel} processing over sequence.
+    \trap{Attention weights are the \textbf{softmaxed} $\alpha$'s, not the raw scores. They sum to 1, NOT to the number of words.}
+
+    \section*{9. Transformers / Self-Attn}
+    \textbf{No recurrence} $\Rightarrow$ parallel over sequence.
+    \trap{Transformers do NOT process tokens sequentially (Quiz 2 Q1).}
+
+    Attention looks cross (dec$\to$enc). \textbf{Self-}attention looks within \emph{same} sentence.
 
     \subsection*{Q, K, V}
-    Inputs $X\in\mathbb{R}^{L\times D}$. Project:
-    \[Q=XW^Q,\ K=XW^K,\ V=XW^V\]
-    Each token \emph{queries} others (via $Q$ vs.~$K$) and pulls info from their \emph{values} ($V$).
+    $Q=XW^Q,\ K=XW^K,\ V=XW^V$. Tokens \emph{query} others (via $Q\cdot K$), pull info from \emph{values} $V$.
+    \[\text{Attn}=\text{softmax}\!\left(\tfrac{QK^\top}{\sqrt{d_k}}\right)V\]
 
-    \subsection*{Scaled Dot-Product}
-    \[\text{Attn}(Q,K,V)=\text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]
+    \subsection*{Space Complexity (Quiz 2 Q4)}
+    $QK^\top:(L{\times}D)(D{\times}L)=L{\times}L$ matrix.
+    \[\boxed{\text{Space/Time}=O(L^2)}\]
+    Scales \textbf{quadratically} in sequence length $L$.
 
-    \subsection*{Space / Compute}
-    $QK^\top$: $(L\times D)(D\times L)=L\times L$ attention matrix.
-    \[\boxed{\text{Space/Time} = O(L^2)}\] Scales \textbf{quadratically} in sequence length.
+    \subsection*{Multi-Head}
+    $h$ parallel $(Q,K,V)$ heads capture different relations (pronouns, verbs, syntax).
 
-    \subsection*{Extras}
+    \subsection*{Masked Self-Attn (Decoder)}
+    Causal: future positions set to $-\infty$ \emph{before} softmax $\Rightarrow$ probability 0 after. Prevents peeking ahead.
+
+    \subsection*{Positional Encodings}
+    Needed---self-attention alone is permutation-invariant.
+
+    \section*{10. Implementation (HF + GPU)}
+
+    \subsection*{GCP / VM}
+    Default GPU quota $=0$; request takes 24--48h. Pick ``\textbf{Deep Learning on Linux}'' boot disk (CUDA pre-installed). \textbf{Stop} VM when unused. Switching billing accounts: no downtime.
+
+    \subsection*{Linux / GPU Commands}
     \begin{itemize}
-        \item \textbf{Multi-head:} $h$ parallel $Q,K,V$ heads $\to$ concat $\to$ projection.
-        \item \textbf{Positional encodings:} needed since self-attention is order-agnostic.
-        \item \textbf{Masking:} decoder masks future positions to preserve autoregressive property.
+        \item \texttt{nvidia-smi} -- GPU status, mem, processes.
+        \item \texttt{export CUDA\_VISIBLE\_DEVICES="0"} -- pin GPU 0. \texttt{=""} forces CPU.
+        \item \texttt{tmux new -s exp1} -- new session.
+        \item \texttt{Ctrl+b}, then \texttt{d} -- detach.
+        \item \texttt{tmux a -t exp1} -- reattach. \texttt{tmux ls} -- list.
     \end{itemize}
 
-    \section*{10. Implementation Practice}
+    \subsection*{HF AutoModel}
+    \texttt{AutoModel.from\_pretrained("bert-base-cased")} picks arch from name.
+    Task variants: \texttt{AutoModelForSequenceClassification}, \texttt{...ForQuestionAnswering}, \texttt{...ForMaskedLM}.
 
-    \subsection*{HuggingFace Tokenizers}
+    \subsection*{HF AutoTokenizer (classic exam)}
     \begin{itemize}
-        \item \texttt{from transformers import AutoTokenizer, AutoModel}
-        \item \texttt{tok = AutoTokenizer.from\_pretrained("bert-base-uncased")}
-        \item \texttt{ids = tok("Hello world", return\_tensors="pt")}
-        \item \texttt{model = AutoModel.from\_pretrained(...)}
-        \item Subword tokenization (BPE / WordPiece) handles OOV.
-        \item Special tokens: \texttt{[CLS]}, \texttt{[SEP]}, \texttt{[PAD]}, \texttt{[MASK]}.
+        \item \texttt{.tokenize(s)} $\to$ list of subword strings (e.g.,\ \texttt{['i','like','nl','\#\#p']}).
+        \item \texttt{.convert\_tokens\_to\_ids(t)} $\to$ integer IDs.
+        \item \texttt{.encode(s)} $\to$ \textbf{tokenize + convert + add special tokens}. BERT: prepends \texttt{[CLS]=101}, appends \texttt{[SEP]=102}.
+        \item \texttt{.decode(ids)} $\to$ string (keeps special tokens).
     \end{itemize}
+    \trap{\texttt{encode} for BERT adds 2 extra IDs (101, 102) beyond the words.}
 
-    \subsection*{Cloud GPU Commands}
-    \begin{itemize}
-        \item \texttt{ssh user@host} -- connect to instance.
-        \item \texttt{scp file user@host:path} -- copy files.
-        \item \texttt{nvidia-smi} -- GPU status, memory, processes.
-        \item \texttt{tmux} / \texttt{screen} -- persistent sessions through disconnects.
-        \item \texttt{CUDA\_VISIBLE\_DEVICES=0 python train.py} -- pin GPU.
-        \item \texttt{pip install torch transformers datasets}.
-        \item \texttt{watch -n 1 nvidia-smi} -- live monitoring.
-    \end{itemize}
+    Batch: auto \textbf{padding} (0s) + \textbf{truncation}; outputs \texttt{attention\_mask} marking real vs.~pad.
 
-    \section*{Quick Formulas Cheat}
+    \section*{Word-Problem Targeting}
     \begin{itemize}
-        \item $PMI=\log_2\tfrac{P(x,y)}{P(x)P(y)}$; PPMI $=\max(0,PMI)$.
-        \item W2V params: $2|V|d$. Cosine: $\tfrac{a\cdot b}{\|a\|\|b\|}$.
-        \item Laplace: $\tfrac{C+1}{C(\cdot)+V}$. Add-$\lambda$: $\tfrac{C+\lambda}{C(\cdot)+\lambda V}$.
-        \item Perplexity $=2^{-\frac{1}{T}\sum\log_2 P}$.
-        \item F1 $=\tfrac{2PR}{P+R}$.
-        \item Attention softmax sums to 1; self-attn $=O(L^2)$.
-        \item Beam $k{=}1$ $\Leftrightarrow$ greedy.
-    \end{itemize}
-
-    \section*{Common Pitfall Checks}
-    \begin{itemize}
-        \item MUC recall $=1$ if one giant cluster $\Rightarrow$ use B-CUBED.
-        \item Laplace: denom must include $+V$, not $+1$.
-        \item W2V has TWO vectors per word, not one.
-        \item Attention weights: after softmax, in $[0,1]$, sum to 1 (NOT raw scores).
-        \item Self-attention is permutation-invariant without positional encodings.
-        \item One-hot dot product $=0$ for different words $\Rightarrow$ no similarity.
+        \item \emph{``Model groups all mentions into 1 cluster''} $\to$ MUC recall = 100\%; use B-CUBED.
+        \item \emph{``Given co-occurrence matrix, compute PMI''} $\to$ normalize by $N$, get marginals, $\log_2$ ratio.
+        \item \emph{``\#\,params in Word2Vec''} $\to$ $2|V|d$ (not $|V|d$).
+        \item \emph{``P(word$|$prev)=0''} $\to$ apply Laplace: $+1$ numerator, $+V$ denominator.
+        \item \emph{``Feedforward LM limitation''} $\to$ fixed context window, no variable-length input.
+        \item \emph{``Beam size $k=1$''} $\to$ equivalent to greedy.
+        \item \emph{``Attention weights sum to ?''} $\to$ 1 (post-softmax), range $[0,1]$.
+        \item \emph{``Transformer space complexity''} $\to$ $O(L^2)$ from $QK^\top$ being $L{\times}L$.
+        \item \emph{``High temperature effect''} $\to$ flatter, more random.
+        \item \emph{``BERT encode output for N words''} $\to$ $N+2$ IDs (CLS + SEP).
+        \item \emph{``Which ambiguity: `I saw her duck'\,''} $\to$ word-sense (duck noun/verb). With \emph{telescope} $\to$ PP attachment.
     \end{itemize}
 
 \end{multicols*}
